@@ -16,7 +16,7 @@
 
 (defn on-before-send-headers [request]
   (let [newHeaders (js->clj (aget request "requestHeaders") :keywordize-keys true)]
-  	(clj->js {:requestHeaders (transform-headers newHeaders)})))
+    (clj->js {:requestHeaders (transform-headers newHeaders)})))
 
 (defn get-token []
   (GET "https://tpcaahshvs.spotilocal.com:4371/simplecsrf/token.json?ref&cors" {:handle handler
