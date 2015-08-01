@@ -1,31 +1,58 @@
 (ns ammo-inteceptor.background
-  (:require [khroma.log :as console]
-            [khroma.runtime :as runtime]
-            [cljs.core.async :refer [>! <!]]
-            [ajax.core :refer [GET]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+	(:require 
+   		[clojure.set :refer [rename-keys]]
+		[ajax.core :refer [ajax-request json-request-format json-response-format]]))
 
-(defn handler [response]
-  (console/log response))
+(def headerPrefix "Ammo-")
+
+(def restrictedHeaders '(Accept-Charset
+	Accept-Encoding
+	Access-Control-Request-Headers
+	Access-Control-Request-Method
+	Connection
+	Content-Length
+	Cookie
+	Content-Transfer-Encoding
+	Date
+	Expect
+	Host
+	Keep-Alive
+	Origin
+	Referer
+	TE
+	Trailer
+	Transfer-Encoding
+	Upgrade
+	User-Agent
+	Via))
 
 (defn js-func [f]
-  (fn [& rest] (clj->js (apply f (map #(js->clj % :keywordize-keys true) rest)))))
-
-(defn error-handler [{:keys [status status-text]}]
-  (.log js/console (str "something bad happened: " status " " status-text)))
+	(fn [& more] (clj->js (apply f (map #(js->clj % :keywordize-keys true) more)))))
 
 (defn transform-headers [headers]
-  (map (fn [a] (assoc a :name (clojure.string/replace (:name a) "Test-" ""))) headers))
+	(map (fn [a] (assoc a :name (clojure.string/replace (:name a) headerPrefix ""))) headers))
 
 (defn on-before-send-headers [request]
-    {:requestHeaders (transform-headers (:requestHeaders request))})
+	{:requestHeaders (transform-headers (:requestHeaders request))})
 
-(defn get-token []
-  (GET "https://tpcaahshvs.spotilocal.com:4371/simplecsrf/token.json?ref&cors" {:handle handler
-                                                                                :error-handler error-handler
-                                                                                :headers {:Test-Origin "https://embed.spotify.com"}}))
+(defn prepend-headers [headers]
+	(clojure.set/rename-keys headers (zipmap (map #(keyword %) restrictedHeaders) (map #(keyword (str headerPrefix %)) restrictedHeaders))))
+
+(defn send-request [request _ responsefn]
+	(ajax-request {:uri (:url request) 
+			:method (keyword (clojure.string/lower-case (:method request)))
+			:params (:params request)
+			:headers (prepend-headers (:headers request))
+			:handler #(responsefn (clj->js {:error (not (first %))
+                                   			:data (last %)}))
+			:format (json-request-format)
+			:response-format (json-response-format {:keywords? true})})
+ 	true)
+
+(defn register-event-listeners []
+	(.addListener js/chrome.webRequest.onBeforeSendHeaders (js-func on-before-send-headers) (clj->js {:urls ["<all_urls>"]}) #js ["blocking" "requestHeaders"])
+	(.addListener js/chrome.runtime.onMessageExternal (js-func send-request)))
 
 (defn init []
-  (console/log "Requesting token from spotify...")
-  (.addListener js/chrome.webRequest.onBeforeSendHeaders (js-func on-before-send-headers) (clj->js {:urls ["<all_urls>"]}) #js ["blocking" "requestHeaders"])
-  (get-token))
+	(.log js/console "Registering event listeners...")
+	(register-event-listeners))
