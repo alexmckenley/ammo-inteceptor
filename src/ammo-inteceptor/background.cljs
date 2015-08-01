@@ -39,15 +39,18 @@
 	(clojure.set/rename-keys headers (zipmap (map #(keyword %) restrictedHeaders) (map #(keyword (str headerPrefix %)) restrictedHeaders))))
 
 (defn send-request [request _ responsefn]
-	(ajax-request {:uri (:url request) 
+	(let [opts {:uri (:url request) 
 			:method (keyword (clojure.string/lower-case (:method request)))
 			:params (:params request)
 			:headers (prepend-headers (:headers request))
 			:handler #(responsefn (clj->js {:error (not (first %))
                                    			:data (last %)}))
 			:format (json-request-format)
-			:response-format (json-response-format {:keywords? true})})
- 	true)
+			:response-format (json-response-format {:keywords? true})}]
+	(.log js/console (clj->js "Sending Request: "))
+	(.log js/console (clj->js opts))
+    (ajax-request opts)
+ 	true))
 
 (defn register-event-listeners []
 	(.addListener js/chrome.webRequest.onBeforeSendHeaders (js-func on-before-send-headers) (clj->js {:urls ["<all_urls>"]}) #js ["blocking" "requestHeaders"])
