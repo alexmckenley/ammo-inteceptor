@@ -1,6 +1,6 @@
 (ns ammo-inteceptor.background
 	(:require 
-   		[clojure.set :refer [rename-keys]]
+		[clojure.set :refer [rename-keys]]
 		[ajax.core :refer [ajax-request json-request-format json-response-format]]))
 
 (def headerPrefix "Ammo-")
@@ -40,20 +40,20 @@
 
 (defn send-request [request _ responsefn]
 	(let [opts {:uri (:url request) 
-			:method (keyword (clojure.string/lower-case (:method request)))
-			:params (:params request)
-			:headers (prepend-headers (:headers request))
-			:handler #(responsefn (clj->js {:error (not (first %))
-                                   			:data (last %)}))
-			:format (json-request-format)
-			:response-format (json-response-format {:keywords? true})}]
-	(.log js/console (clj->js "Sending Request: "))
-	(.log js/console (clj->js opts))
-    (ajax-request opts)
- 	true))
+				:method (keyword (clojure.string/lower-case (:method request)))
+				:params (:params request)
+				:headers (prepend-headers (:headers request))
+				:handler #(responsefn (clj->js {:error (not (first %))
+												:data (last %)}))
+				:format (json-request-format)
+				:response-format (json-response-format {:keywords? true})}]
+		(if (:debug request)
+			(.log js/console (clj->js opts)))
+		(ajax-request opts)
+		true))
 
 (defn register-event-listeners []
-	(.addListener js/chrome.webRequest.onBeforeSendHeaders (js-func on-before-send-headers) (clj->js {:urls ["<all_urls>"]}) #js ["blocking" "requestHeaders"])
+	(.addListener js/chrome.webRequest.onBeforeSendHeaders (js-func on-before-send-headers) (clj->js {:urls ["*://*.spotilocal.com/*"]}) #js ["blocking" "requestHeaders"])
 	(.addListener js/chrome.runtime.onMessageExternal (js-func send-request)))
 
 (defn init []

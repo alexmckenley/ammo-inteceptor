@@ -1,20 +1,25 @@
 {
   "name": "ammo-inteceptor",
   "version": "0.0.1",
-  "browser_action": {
-      "default_icon": {
-        "19": "icon19.png",
-        "38": "icon38.png"
-      }
-  },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
   },
   "background": {
-    "scripts": ["ammo_inteceptor.js", "background.js"],
+    "scripts": [
+      "ammo_inteceptor.js",
+      "background.js"
+    ],
     "persistent": true 
+  },
+  "externally_connectable": {
+    "matches": [
+      "*://deini.github.io/*",
+      "*://alexmckenley.github.io/*",
+      "*://*.ammo.io/*",
+      "*://*.ammo.dev/*"
+    ]
   },
   "permissions": [
     "webRequest",
@@ -25,4 +30,3 @@
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
   "manifest_version": 2
 }
-
